@@ -1,0 +1,101 @@
+﻿@model List<Customer>
+
+<button onclick="showModal('@Url.Action("Edit", "Customer", new { id = Guid.Empty })')"
+        class="btn btn-primary mb-3">
+    Add Customer
+</button>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Age</th>
+            <th>Post Code</th>
+            <th>Height</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var customer in Model)
+        {
+            <tr>
+                <td>@customer.Name</td>
+                <td>@customer.Age</td>
+                <td>@customer.PostCode</td>
+                <td>@customer.Height</td>
+                
+                <td>
+                    <button onclick="console.log('Editing:', '@customer.Id', '@customer.Name');
+                                  showModal('@Url.Action("Edit", "Customer", new { id = customer.Id })')"
+                            class="btn btn-sm btn-secondary">
+                        Edit
+                    </button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div id="modal-container"></div>
+
+@section Scripts {
+    <script>
+        function showModal(url) {
+            console.log("Loading modal from:", url);
+
+            $.get(url)
+                .done(function (data) {
+                    $('#modal-container').html(data);
+                    var modal = new bootstrap.Modal(document.getElementById('customerModal'));
+                    modal.show();
+
+                    // Reinitialize validation
+                    var form = $('#customerForm');
+                    form.removeData('validator');
+                    form.removeData('unobtrusiveValidation');
+                    $.validator.unobtrusive.parse(form);
+                })
+                .fail(function (xhr, status, error) {
+                    console.error("Error loading modal:", error);
+                    alert('Error loading form');
+                });
+        }
+
+        $(document).on('submit', '#customerForm', function (e) {
+            e.preventDefault();
+            var form = $(this);
+
+            // Client-side validation
+            if (!form.valid()) {
+                console.log("Form validation failed");
+                return false;
+            }
+
+            $.ajax({
+                url: form.attr('action'),
+                method: 'POST',
+                data: form.serialize(),
+                success: function (response) {
+                    if (response.success) {
+                        $('#customerModal').modal('hide');
+                        window.location.reload();
+                    }
+                },
+                error: function (xhr) {
+                    if (xhr.status === 400) {
+                        //  Server-side validation failed (Close modal and refresh page on success )
+                        $('#modal-container').html(xhr.responseText);
+
+                        //  Reinitialize validation (Re-setup validation for the new form)
+                        var newForm = $('#customerForm');
+                        newForm.removeData('validator');
+                        newForm.removeData('unobtrusiveValidation');
+                        $.validator.unobtrusive.parse(newForm);
+                    } else {
+                        alert('An error occurred. Please try again.');
+                    }
+                }
+            });
+        });
+    </script>
+}
